@@ -23,7 +23,7 @@ export default function Layout({ children, currentPageName }) {
   ];
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-50">
+    <div className="min-h-screen bg-neutral-950 text-neutral-50 justify-center" class="flex flex-col sm:flex-row gap-4 justify-center">
       {/* Top nav bar */}
       <header className="sticky top-0 z-40 border-b border-pink-500/20 bg-neutral-950/95 backdrop-blur">
         <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
@@ -67,8 +67,8 @@ export default function Layout({ children, currentPageName }) {
         </nav>
       </header>
 
-      {/* Main content – centred */}
-      <main className="mx-auto max-w-6xl px-4 py-10">
+      {/* Main content – pages decide their own centering */}
+      <main className="py-10 px-4">
         {children}
       </main>
     </div>

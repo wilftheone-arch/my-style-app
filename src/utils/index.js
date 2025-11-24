@@ -11,6 +11,8 @@ export function createPageUrl(pageName) {
       return "/shopping";
     case "Scan":
       return "/scan";
+    case "StyleSwiper":
+      return "/styleswiper";
     case "Profile":
       return "/profile";
     default:

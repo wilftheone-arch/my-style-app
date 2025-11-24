@@ -7,6 +7,7 @@ import Wardrobe from "./Pages/Wardrobe.jsx";
 import Outfits from "./Pages/Outfits.jsx";
 import Shopping from "./Pages/Shopping.jsx";
 import Profile from "./Pages/Profile.jsx";
+import StyleSwiper from "./Pages/StyleSwiper.jsx";
 import Scan from "./Pages/Scan.jsx"; 
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
         <Route path="/outfits" element={<Outfits />} />
         <Route path="/shopping" element={<Shopping />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/styleswiper" element={<StyleSwiper />} />
         <Route path="/scan" element={<Scan />} /> 
       </Routes>
     </BrowserRouter>

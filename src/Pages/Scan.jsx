@@ -1,7 +1,7 @@
 // src/Pages/Scan.jsx
 import React, { useState } from "react";
 import Layout from "../Layout";
-import { Button } from "@/components/ui/button";
+import { Button } from "../Components/ui/button";
 import { Camera, Upload, Sparkles } from "lucide-react";
 
 export default function Scan() {
