@@ -252,9 +252,9 @@ export default function StyleSwiper() {
             currentItem && (
               <>
                 {/* CARD */}
-                <div className="relative w-full max-w-md aspect-[3/4] select-none">
+                <div className="relative w-full max-w-md aspect-3/4 select-none">
                   <div
-                    className={`relative h-full w-full overflow-hidden rounded-[32px] bg-neutral-900 shadow-xl ${
+                    className={`relative h-full w-full overflow-hidden rounded-4xl bg-neutral-900 shadow-xl ${
                       !isDragging || leavingDirection
                         ? "transition-transform duration-200 ease-out"
                         : ""
@@ -302,7 +302,7 @@ export default function StyleSwiper() {
                         KEEP
                       </div>
                       <div
-                        className="absolute top-6 right-6 flex items-center gap-2 rounded-2xl border-2 border-red-400/80 bg-red-500/10 px-4 py-2 text-sm font-bold tracking-widest text-red-300 rotate-[10deg]"
+                        className="absolute top-6 right-6 flex items-center gap-2 rounded-2xl border-2 border-red-400/80 bg-red-500/10 px-4 py-2 text-sm font-bold tracking-widest text-red-300 rotate-10"
                         style={{ opacity: leftOpacity }}
                       >
                         <X className="h-4 w-4" />
