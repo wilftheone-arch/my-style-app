@@ -9,63 +9,63 @@ const CLOTHES = [
     title: "Replica sneakers",
     brand: "Maison Margiela",
     image:
-      "https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=900&h=1200&fit=crop",
+      "https://www.maisonmargiela.com/dw/image/v2/AAPK_PRD/on/demandware.static/-/Sites-margiela-master-catalog/default/dw00402936/images/large/S57WS0236_P1895_T6065_F.jpg?sw=1024&q=80",
   },
   {
     id: 2,
     title: "Grey fleece hoodie",
     brand: "Champion Reverse Weave",
     image:
-      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=900&h=1200&fit=crop",
+      "https://www.gapcanada.ca/webcontent/0056/550/357/cn56550357.jpg",
   },
   {
     id: 3,
     title: "Slim oxford shirt",
     brand: "Ralph Lauren",
     image:
-      "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=900&h=1200&fit=crop",
+      "https://dtcralphlauren.scene7.com/is/image/PoloGSI/s7-305179_alternate10?$rl_4x5_pdp$",
   },
   {
     id: 4,
     title: "Black leather jacket",
     brand: "AllSaints",
     image:
-      "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=900&h=1200&fit=crop",
+      "https://saint-laurent.dam.kering.com/m/70a73b88f516dd0b/Medium2-778485YCNF21000_A.jpg?v=5",
   },
   {
     id: 5,
     title: "Tailored wool coat",
     brand: "COS",
     image:
-      "https://images.unsplash.com/photo-1542293787938-4d273c360af7?w=900&h=1200&fit=crop",
+      "https://media.cos.com/assets/001/bd/50/bd501a8ec8ba88a0a4e359d93c76de2abe893045_xxl-1.jpg?imwidth=1260",
   },
   {
     id: 6,
     title: "Linen resort shirt",
     brand: "Orlebar Brown",
     image:
-      "https://images.unsplash.com/photo-1487412912498-0447578fcca8?w=900&h=1200&fit=crop",
+      "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcQfkIC4RQHBJnWZpITnTC7UVSQkD-5t8YAKFNw6Cq3YVmcSI865TU47AGhn-E1DWWJzF7LKnAT-xfvqCrv71eLVoJX8zu1qZfpBUpTsIK3JVTcGzKp0dwouRA",
   },
   {
     id: 7,
     title: "Tonal tech parka",
     brand: "Acronym",
     image:
-      "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=900&h=1200&fit=crop",
+      "https://images-dynamic-arcteryx.imgix.net/details/1350x1710/F25-X000009914-Therme-Down-Parka-Carob-Back-View.jpg?auto=format%2Ccompress&q=70&fit=crop&fill=white&dpr=2&ixlib=react-9.10.0&w=927",
   },
   {
     id: 8,
     title: "Silk slip dress",
     brand: "Reformation",
     image:
-      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=900&h=1200&fit=crop",
+      "https://media.thereformation.com/image/upload/f_auto,q_auto:eco,dpr_2.0/w_500/PRD-SFCC/1318428/SUGAR/1318428.1.SUGAR",
   },
   {
     id: 9,
     title: "Oversized trench",
     brand: "Burberry",
     image:
-      "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=900&h=1200&fit=crop",
+      "https://assets.burberry.com/is/image/Burberryltd/EC5C7407-7705-4CD9-B59E-1AAB2C33E8E3?wid=200",
   },
 ];
 
@@ -254,7 +254,7 @@ export default function StyleSwiper() {
                 {/* CARD */}
                 <div className="relative w-full max-w-md aspect-3/4 select-none">
                   <div
-                    className={`relative h-full w-full overflow-hidden rounded-4xl bg-neutral-900 shadow-xl ${
+                    className={`relative mx-auto h-full flex items-center justify-center ${
                       !isDragging || leavingDirection
                         ? "transition-transform duration-200 ease-out"
                         : ""
@@ -274,14 +274,6 @@ export default function StyleSwiper() {
                     }}
                     onTouchEnd={handleRelease}
                   >
-                    {/* Full-bleed image */}
-                    <img
-                      src={currentItem.image}
-                      alt={currentItem.title}
-                      className="h-full w-full object-cover"
-                      draggable={false}
-                    />
-
                     {/* Progress pill */}
                     <div className="pointer-events-none absolute top-4 inset-x-0 flex justify-center">
                       <div className="flex items-center gap-2 rounded-full bg-neutral-950/80 px-3 py-1 text-xs font-semibold text-pink-100">
@@ -289,6 +281,34 @@ export default function StyleSwiper() {
                         <span>
                           {index + 1} / {CLOTHES.length}
                         </span>
+                      </div>
+                    </div>
+
+                    <div className="w-full max-w-sm aspect-3/4 rounded-3xl bg-neutral-950 shadow-2xl border border-pink-500/20 overflow-hidden">
+                      {/* Card content */}
+                      <div className="flex h-full flex-col items-center justify-between px-10 py-10">
+                        {/* Big image area */}
+                        <div className="flex items-center justify-center w-full mb-6 max-h-[70%]">
+                          <img
+                            src={currentItem.image}
+                            alt={currentItem.title}
+                            className="h-full w-full object-contain rounded-3xl"
+                            draggable={false}
+                          />
+                        </div>
+
+                        {/* Text area */}
+                        <div className="space-y-2 text-center">
+                          <h3 className="text-xl font-semibold text-white sm:text-2xl">
+                            {currentItem.title}
+                          </h3>
+                          <p className="text-xs text-neutral-400 sm:text-sm">
+                            {currentItem.brand}
+                          </p>
+                          <p className="mt-2 text-[11px] text-neutral-500 sm:text-xs">
+                            Swipe right to keep, left to pass.
+                          </p>
+                        </div>
                       </div>
                     </div>
 
@@ -310,19 +330,6 @@ export default function StyleSwiper() {
                       </div>
                     </div>
                   </div>
-                </div>
-
-                {/* Text under card */}
-                <div className="text-center space-y-1">
-                  <h3 className="text-xl font-semibold text-white sm:text-2xl">
-                    {currentItem.title}
-                  </h3>
-                  <p className="text-sm text-neutral-400">
-                    {currentItem.brand}
-                  </p>
-                  <p className="text-xs text-neutral-500">
-                    Swipe right to keep, left to pass.
-                  </p>
                 </div>
               </>
             )

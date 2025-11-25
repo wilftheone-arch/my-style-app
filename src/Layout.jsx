@@ -29,7 +29,7 @@ export default function Layout({ children, currentPageName }) {
         <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-pink-300">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-linear-to-br from-pink-500 to-pink-300">
               <Sparkles className="h-5 w-5 text-neutral-950" />
             </div>
             <div className="leading-tight">
