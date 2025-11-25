@@ -1,5 +1,5 @@
 // src/Pages/StyleSwiper.jsx
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import Layout from "../Layout";
 import { Heart, X, Sparkles, RefreshCw } from "lucide-react";
 
@@ -13,8 +13,8 @@ const CLOTHES = [
   },
   {
     id: 2,
-    title: "Grey fleece hoodie",
-    brand: "Champion Reverse Weave",
+    title: "Grey zip-up hoodie",
+    brand: "GAP",
     image:
       "https://www.gapcanada.ca/webcontent/0056/550/357/cn56550357.jpg",
   },
@@ -28,7 +28,7 @@ const CLOTHES = [
   {
     id: 4,
     title: "Black leather jacket",
-    brand: "AllSaints",
+    brand: "SaintLaurent",
     image:
       "https://saint-laurent.dam.kering.com/m/70a73b88f516dd0b/Medium2-778485YCNF21000_A.jpg?v=5",
   },
@@ -42,14 +42,14 @@ const CLOTHES = [
   {
     id: 6,
     title: "Linen resort shirt",
-    brand: "Orlebar Brown",
+    brand: "H&M",
     image:
       "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcQfkIC4RQHBJnWZpITnTC7UVSQkD-5t8YAKFNw6Cq3YVmcSI865TU47AGhn-E1DWWJzF7LKnAT-xfvqCrv71eLVoJX8zu1qZfpBUpTsIK3JVTcGzKp0dwouRA",
   },
   {
     id: 7,
     title: "Tonal tech parka",
-    brand: "Acronym",
+    brand: "Arc'teryx",
     image:
       "https://images-dynamic-arcteryx.imgix.net/details/1350x1710/F25-X000009914-Therme-Down-Parka-Carob-Back-View.jpg?auto=format%2Ccompress&q=70&fit=crop&fill=white&dpr=2&ixlib=react-9.10.0&w=927",
   },
@@ -70,6 +70,7 @@ const CLOTHES = [
 ];
 
 const SWIPE_THRESHOLD = 80;
+const STORAGE_KEY = "styleAI-liked-clothes";
 
 export default function StyleSwiper() {
   const [index, setIndex] = useState(0);
@@ -195,6 +196,44 @@ export default function StyleSwiper() {
       : 0;
 
   const canUndo = history.length > 0 && !leavingDirection && index > 0;
+
+  // Load likes from storage on mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return;
+      const ids = parsed
+        .map((item) => item?.id)
+        .filter((id) => typeof id === "number");
+      setLikedIds(ids);
+    } catch (err) {
+      setLikedIds([]);
+    }
+  }, []);
+
+  // Persist likes to storage whenever they change
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const likedItems = CLOTHES.filter((item) =>
+        likedIds.includes(item.id)
+      ).map(({ id, title, brand, image }) => ({
+        id,
+        title,
+        brand,
+        image,
+      }));
+      window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(likedItems)
+      );
+    } catch (err) {
+      // ignore storage errors
+    }
+  }, [likedIds]);
 
   return (
     <Layout currentPageName="StyleSwiper">
