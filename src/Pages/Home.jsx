@@ -52,7 +52,9 @@ const Home = () => {
             <div className="w-12 h-12 bg-pink-600/20 rounded-xl flex items-center justify-center mb-4">
               <Camera className="w-6 h-6 text-pink-400" />
             </div>
-            <h3 className="text-xl font-semibold mb-3 text-white">Smart Wardrobe Scanning</h3>
+            <h3 className="text-xl font-semibold mb-3 text-white">
+              Smart Wardrobe Scanning
+            </h3>
             <p className="text-gray-400">
               Use your phone camera to scan and digitize your wardrobe.
             </p>
@@ -62,7 +64,9 @@ const Home = () => {
             <div className="w-12 h-12 bg-pink-600/20 rounded-xl flex items-center justify-center mb-4">
               <Sparkles className="w-6 h-6 text-pink-400" />
             </div>
-            <h3 className="text-xl font-semibold mb-3 text-white">AI Style Learning</h3>
+            <h3 className="text-xl font-semibold mb-3 text-white">
+              AI Style Learning
+            </h3>
             <p className="text-gray-400">
               Swipe outfits and train your personal AI stylist.
             </p>
@@ -72,7 +76,9 @@ const Home = () => {
             <div className="w-12 h-12 bg-pink-600/20 rounded-xl flex items-center justify-center mb-4">
               <ShoppingBag className="w-6 h-6 text-pink-400" />
             </div>
-            <h3 className="text-xl font-semibold mb-3 text-white">Smart Shopping</h3>
+            <h3 className="text-xl font-semibold mb-3 text-white">
+              Smart Shopping
+            </h3>
             <p className="text-gray-400">
               Get personalised shopping links based on your style.
             </p>
