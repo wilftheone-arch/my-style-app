@@ -19,3 +19,13 @@ export function createPageUrl(pageName) {
       return "/";
   }
 }
+
+export const shouldShowForProfile = (item, profile) => {
+  const pref =
+    (profile?.genderPreference || profile?.gender || "unspecified").toLowerCase();
+  const audience = (item?.audience || "unisex").toLowerCase();
+
+  if (pref === "unspecified" || pref === "unisex" || !pref) return true;
+  if (audience === "unisex") return true;
+  return audience === pref;
+};

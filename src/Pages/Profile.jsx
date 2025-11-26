@@ -5,7 +5,8 @@ import { createPageUrl } from "../utils";
 
 const WARDROBE_KEY = "styleai_wardrobe";
 const LEGACY_WARDROBE_KEY = "styleAI-wardrobe";
-const PROFILE_KEY = "styleai_profile";
+const PROFILE_KEY = "styleAI-profile";
+const LEGACY_PROFILE_KEY = "styleai_profile";
 const LIKED_KEY = "styleAI-liked-clothes";
 
 const slotMatchers = {
@@ -87,11 +88,13 @@ const styleTags = ["Minimalist", "Streetwear", "Smart casual", "Formal", "Sporty
 
 const defaultProfile = {
   gender: "",
+  genderPreference: "unspecified",
   height: "",
   topSize: "",
   bottomSize: "",
   shoeSize: "",
   stylePrefs: [],
+  location: "",
 };
 
 export default function Profile() {
@@ -100,6 +103,7 @@ export default function Profile() {
   const [profile, setProfile] = useState(defaultProfile);
   const [saveMessage, setSaveMessage] = useState("");
   const [resetMessage, setResetMessage] = useState("");
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -108,7 +112,9 @@ export default function Profile() {
         window.localStorage.getItem(WARDROBE_KEY) ||
         window.localStorage.getItem(LEGACY_WARDROBE_KEY);
       const likedRaw = window.localStorage.getItem(LIKED_KEY);
-      const profileRaw = window.localStorage.getItem(PROFILE_KEY);
+      const profileRaw =
+        window.localStorage.getItem(PROFILE_KEY) ||
+        window.localStorage.getItem(LEGACY_PROFILE_KEY);
       const parsedWardrobe = wardrobeRaw ? JSON.parse(wardrobeRaw) : [];
       const parsedLiked = likedRaw ? JSON.parse(likedRaw) : [];
       const parsedProfile = profileRaw ? JSON.parse(profileRaw) : defaultProfile;
@@ -181,7 +187,9 @@ export default function Profile() {
       window.localStorage.removeItem(WARDROBE_KEY);
       window.localStorage.removeItem(LEGACY_WARDROBE_KEY);
       window.localStorage.removeItem(LIKED_KEY);
+      window.localStorage.removeItem("styleAI-swiper-session");
       window.localStorage.removeItem(PROFILE_KEY);
+      window.localStorage.removeItem(LEGACY_PROFILE_KEY);
     } catch (err) {
       // ignore
     }
@@ -189,6 +197,7 @@ export default function Profile() {
     setLiked([]);
     setProfile(defaultProfile);
     setResetMessage("Profile reset. Scan or add pieces to see stats here.");
+    setShowResetConfirm(false);
   };
 
   const handleProfileChange = (field, value) => {
@@ -209,11 +218,6 @@ export default function Profile() {
 
   const handleSaveProfile = () => {
     if (typeof window === "undefined") return;
-    const { gender, height } = profile;
-    if (!gender || !height) {
-      setSaveMessage("Please add at least gender and height so we can tailor looks.");
-      return;
-    }
     try {
       window.localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
       setSaveMessage("Profile saved. Your outfits will reflect this.");
@@ -237,7 +241,7 @@ export default function Profile() {
               </p>
             </div>
             <button
-              onClick={handleReset}
+              onClick={() => setShowResetConfirm(true)}
               className="inline-flex items-center gap-2 rounded-full border border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-300 transition hover:border-pink-500"
             >
               Reset data
@@ -259,6 +263,20 @@ export default function Profile() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <label className="space-y-2 text-sm">
+                  <span className="text-neutral-300">What do you prefer to wear?</span>
+                  <select
+                    value={profile.genderPreference}
+                    onChange={(e) => handleProfileChange("genderPreference", e.target.value)}
+                    className="w-full rounded-xl bg-neutral-900 border border-neutral-700 px-3 py-2 text-neutral-100 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/40"
+                  >
+                    <option value="unspecified">Not sure / prefer not to say</option>
+                    <option value="male">Mostly menswear</option>
+                    <option value="female">Mostly womenswear</option>
+                    <option value="unisex">Unisex / both</option>
+                  </select>
+                </label>
+
                 <label className="space-y-2 text-sm">
                   <span className="text-neutral-300">Gender / category</span>
                   <select
@@ -322,6 +340,17 @@ export default function Profile() {
                     className="w-full rounded-xl bg-neutral-900 border border-neutral-700 px-3 py-2 text-neutral-100 placeholder:text-neutral-500 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/40"
                   />
                 </label>
+
+                <label className="space-y-2 text-sm sm:col-span-2">
+                  <span className="text-neutral-300">City, Country (for weather suggestions)</span>
+                  <input
+                    type="text"
+                    value={profile.location}
+                    onChange={(e) => handleProfileChange("location", e.target.value)}
+                    placeholder="e.g. Montréal, Canada"
+                    className="w-full rounded-xl bg-neutral-900 border border-neutral-700 px-3 py-2 text-neutral-100 placeholder:text-neutral-500 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/40"
+                  />
+                </label>
               </div>
 
               <div className="space-y-3">
@@ -355,7 +384,7 @@ export default function Profile() {
                   Save profile
                 </button>
                 <p className="text-xs text-neutral-500">
-                  We store this locally as <code>styleai_profile</code>.
+                  We store this locally as <code>styleAI-profile</code>.
                 </p>
               </div>
             </div>
@@ -507,6 +536,34 @@ export default function Profile() {
           </div>
         </div>
       </div>
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/80 backdrop-blur">
+          <div className="w-full max-w-md rounded-2xl border border-pink-500/30 bg-neutral-900 shadow-2xl shadow-pink-500/20 p-6 space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-xl font-semibold text-neutral-50">
+                Reset StyleAI data?
+              </h3>
+              <p className="text-sm text-neutral-300">
+                This will erase your wardrobe, likes, swipe history, and profile preferences. This can&apos;t be undone.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="inline-flex items-center justify-center rounded-xl border border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-200 hover:border-pink-500"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReset}
+                className="inline-flex items-center justify-center rounded-xl bg-pink-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-pink-400"
+              >
+                Yes, reset everything
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

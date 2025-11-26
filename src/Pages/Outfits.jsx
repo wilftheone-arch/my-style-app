@@ -1,3 +1,4 @@
+// src/Pages/Outfits.jsx
 import React, {
   useCallback,
   useEffect,
@@ -5,9 +6,14 @@ import React, {
   useState,
 } from "react";
 import Layout from "../Layout";
+import useWeather from "../hooks/useWeather";
+import { shouldShowForProfile } from "../utils";
 
 const WARDROBE_KEY = "styleai_wardrobe";
 const LEGACY_WARDROBE_KEY = "styleAI-wardrobe";
+const PROFILE_KEY = "styleAI-profile";
+const LEGACY_PROFILE_KEY = "styleai_profile";
+const DEFAULT_PROFILE = { genderPreference: "unspecified", location: "" };
 
 const HARD_CODED_WARDROBE = [
   {
@@ -18,6 +24,7 @@ const HARD_CODED_WARDROBE = [
       "https://dtcralphlauren.scene7.com/is/image/PoloGSI/s7-305179_alternate10?$rl_4x5_pdp$",
     category: "shirt",
     owned: true,
+    audience: "male",
   },
   {
     id: "w-2",
@@ -27,6 +34,7 @@ const HARD_CODED_WARDROBE = [
       "https://images.unsplash.com/photo-1542272604-787c3835535d?w=400&h=400&fit=crop",
     category: "jeans",
     owned: true,
+    audience: "unisex",
   },
   {
     id: "w-3",
@@ -36,6 +44,7 @@ const HARD_CODED_WARDROBE = [
       "https://media.cos.com/assets/001/bd/50/bd501a8ec8ba88a0a4e359d93c76de2abe893045_xxl-1.jpg?imwidth=1260",
     category: "coat",
     owned: true,
+    audience: "unisex",
   },
   {
     id: "w-4",
@@ -45,6 +54,7 @@ const HARD_CODED_WARDROBE = [
       "https://www.maisonmargiela.com/dw/image/v2/AAPK_PRD/on/demandware.static/-/Sites-margiela-master-catalog/default/dw00402936/images/large/S57WS0236_P1895_T6065_F.jpg?sw=1024&q=80",
     category: "sneakers",
     owned: true,
+    audience: "unisex",
   },
   {
     id: "w-5",
@@ -53,6 +63,7 @@ const HARD_CODED_WARDROBE = [
     image: "https://www.gapcanada.ca/webcontent/0056/550/357/cn56550357.jpg",
     category: "hoodie",
     owned: true,
+    audience: "unisex",
   },
   {
     id: "w-6",
@@ -62,6 +73,7 @@ const HARD_CODED_WARDROBE = [
       "https://saint-laurent.dam.kering.com/m/70a73b88f516dd0b/Medium2-778485YCNF21000_A.jpg?v=5",
     category: "jacket",
     owned: true,
+    audience: "unisex",
   },
   {
     id: "w-7",
@@ -71,6 +83,7 @@ const HARD_CODED_WARDROBE = [
       "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcQfkIC4RQHBJnWZpITnTC7UVSQkD-5t8YAKFNw6Cq3YVmcSI865TU47AGhn-E1DWWJzF7LKnAT-xfvqCrv71eLVoJX8zu1qZfpBUpTsIK3JVTcGzKp0dwouRA",
     category: "shirt",
     owned: true,
+    audience: "unisex",
   },
   {
     id: "w-8",
@@ -80,6 +93,7 @@ const HARD_CODED_WARDROBE = [
       "https://assets.burberry.com/is/image/Burberryltd/EC5C7407-7705-4CD9-B59E-1AAB2C33E8E3?wid=200",
     category: "trench",
     owned: true,
+    audience: "unisex",
   },
   {
     id: "w-9",
@@ -89,6 +103,7 @@ const HARD_CODED_WARDROBE = [
       "https://images.unsplash.com/photo-1542293772-53b4c68da5c7?w=400&h=400&fit=crop",
     category: "bag",
     owned: true,
+    audience: "unisex",
   },
 ];
 
@@ -157,17 +172,112 @@ const labelOutfit = (pieces) => {
   const hasOuter = pieces.some((p) => inferSlot(p) === "outerwear");
   const hasDress = pieces.some((p) => inferSlot(p) === "dress");
   const hasShoes = pieces.some((p) => inferSlot(p) === "shoes");
-  if (hasOuter && hasShoes) return "Layered winter outfit";
-  if (hasOuter) return "Layered look";
-  if (hasDress) return "Elevated dress look";
-  if (hasShoes) return "Smart casual fit";
-  return "Everyday outfit";
+  const hasTop = pieces.some((p) => inferSlot(p) === "top");
+  const hasBottom = pieces.some((p) => inferSlot(p) === "bottom");
+  const hasAccessory = pieces.some((p) => inferSlot(p) === "accessory");
+  const count = pieces.length;
+
+  const pickName = (options, fallback) => randomFrom(options) || fallback;
+
+  if (count === 2) {
+    return pickName(
+      ["Minimal combo", "Simple two-piece fit", "Quick daily pair", "Light mix"],
+      "Simple two-piece fit"
+    );
+  }
+
+  if (hasOuter && hasShoes && (hasTop || hasBottom || hasDress)) {
+    if (count >= 4 && hasAccessory) {
+      return pickName(
+        [
+          "Fully styled layered look",
+          "Complete going-out outfit",
+          "Head-to-toe layered fit",
+          "Accessories-on layered combo",
+        ],
+        "Complete layered look"
+      );
+    }
+    return pickName(
+      [
+        "City layers fit",
+        "Smart layered outfit",
+        "Cold-weather daily fit",
+        "Evening layered look",
+        "Street layer stack",
+      ],
+      "Layered look"
+    );
+  }
+
+  if (hasOuter && !hasShoes) {
+    return pickName(
+      ["Light layering", "Transitional layers", "Throw-on jacket fit", "Casual top layer"],
+      "Light layering"
+    );
+  }
+
+  if (hasDress && hasShoes) {
+    return pickName(
+      [
+        "Dress night out",
+        "Simple dress look",
+        "Effortless dress outfit",
+        "Weekend dress combo",
+      ],
+      "Dress look"
+    );
+  }
+
+  if (hasTop && hasBottom && hasShoes && !hasOuter) {
+    return pickName(
+      [
+        "Smart casual outfit",
+        "Everyday jeans fit",
+        "Basic daily combo",
+        "Relaxed casual look",
+      ],
+      "Smart casual outfit"
+    );
+  }
+
+  return pickName(
+    ["Simple outfit", "Everyday combo", "Easy grab-and-go"],
+    "Everyday outfit"
+  );
+};
+
+const scoreOutfitForWeather = (outfit, weatherTag) => {
+  const hasOuter = outfit.pieces.some((p) => inferSlot(p) === "outerwear");
+  const hasDress = outfit.pieces.some((p) => inferSlot(p) === "dress");
+  const hasShortsOrSkirt = outfit.pieces.some((p) =>
+    (p.category || "").toLowerCase().includes("short") ||
+    (p.category || "").toLowerCase().includes("skirt")
+  );
+
+  switch (weatherTag) {
+    case "cold":
+    case "snow":
+      return hasOuter ? 2 : 0;
+    case "cool":
+      return hasOuter ? 1 : 0;
+    case "hot":
+      return hasDress || hasShortsOrSkirt ? 2 : 0;
+    case "warm":
+      return hasDress || hasShortsOrSkirt ? 1 : 0;
+    case "rain":
+      return hasOuter ? 1 : 0;
+    default:
+      return 0;
+  }
 };
 
 export default function Outfits() {
   const [wardrobe, setWardrobe] = useState([]);
   const [outfits, setOutfits] = useState([]);
   const [activeDetailsId, setActiveDetailsId] = useState(null);
+  const [profile, setProfile] = useState(DEFAULT_PROFILE);
+  const { weatherTag } = useWeather(profile.location);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -175,7 +285,11 @@ export default function Outfits() {
       const wardrobeRaw =
         window.localStorage.getItem(WARDROBE_KEY) ||
         window.localStorage.getItem(LEGACY_WARDROBE_KEY);
+      const profileRaw =
+        window.localStorage.getItem(PROFILE_KEY) ||
+        window.localStorage.getItem(LEGACY_PROFILE_KEY);
       const parsedWardrobe = wardrobeRaw ? JSON.parse(wardrobeRaw) : [];
+      const parsedProfile = profileRaw ? JSON.parse(profileRaw) : DEFAULT_PROFILE;
       const useWardrobe =
         Array.isArray(parsedWardrobe) && parsedWardrobe.length
           ? parsedWardrobe
@@ -184,10 +298,16 @@ export default function Outfits() {
         ...item,
         title: item.title || item.name,
         image: item.image || item.imageUrl,
+        audience: item.audience || "unisex",
       }));
-      setWardrobe(withNormalizedFields);
+      const filtered = withNormalizedFields.filter((item) =>
+        shouldShowForProfile(item, parsedProfile)
+      );
+      setWardrobe(filtered);
+      setProfile({ ...DEFAULT_PROFILE, ...(parsedProfile || {}) });
     } catch (err) {
-      setWardrobe(HARD_CODED_WARDROBE);
+      setWardrobe(HARD_CODED_WARDROBE.map((item) => ({ ...item, audience: item.audience || "unisex" })));
+      setProfile(DEFAULT_PROFILE);
     }
   }, []);
 
@@ -216,18 +336,27 @@ export default function Outfits() {
     const combos = [];
     const used = new Set();
     const availableCount = wardrobe.length;
-    const target =
-      availableCount === 0 ? 0 : Math.min(5, Math.max(3, Math.min(availableCount, 5)));
+
+    if (availableCount === 0) {
+      setOutfits([]);
+      setActiveDetailsId(null);
+      return;
+    }
+
+    const target = Math.min(6, Math.max(3, Math.min(availableCount, 6)));
 
     let guard = 0;
-    while (combos.length < target && guard < 80) {
+    while (combos.length < target && guard < 120) {
       guard += 1;
 
       const pieces = [];
       const pickedIds = new Set();
+
+      const roll = Math.random();
+      const canUseDress = buckets.dress.length > 0;
       const useDress =
-        buckets.dress.length > 0 &&
-        (Math.random() < 0.45 || !buckets.top.length || !buckets.bottom.length);
+        canUseDress &&
+        (roll < 0.3 || !buckets.top.length || !buckets.bottom.length);
 
       if (useDress) {
         const dress = randomFrom(buckets.dress);
@@ -236,17 +365,35 @@ export default function Outfits() {
           pickedIds.add(dress.id);
         }
       } else {
-        const top =
-          randomFrom(buckets.top) || randomFrom([...buckets.other, ...buckets.outerwear]);
-        if (top) {
-          pieces.push(top);
-          pickedIds.add(top.id);
-        }
-        if (buckets.bottom.length) {
+        const startFromBottom = Math.random() < 0.3 && buckets.bottom.length;
+
+        if (startFromBottom) {
           const bottom = randomFrom(buckets.bottom);
-          if (bottom && !pickedIds.has(bottom.id)) {
+          if (bottom) {
             pieces.push(bottom);
             pickedIds.add(bottom.id);
+          }
+          const top =
+            randomFrom(buckets.top) ||
+            randomFrom([...buckets.other, ...buckets.outerwear]);
+          if (top && !pickedIds.has(top.id)) {
+            pieces.push(top);
+            pickedIds.add(top.id);
+          }
+        } else {
+          const top =
+            randomFrom(buckets.top) ||
+            randomFrom([...buckets.other, ...buckets.outerwear]);
+          if (top) {
+            pieces.push(top);
+            pickedIds.add(top.id);
+          }
+          if (buckets.bottom.length) {
+            const bottom = randomFrom(buckets.bottom);
+            if (bottom && !pickedIds.has(bottom.id)) {
+              pieces.push(bottom);
+              pickedIds.add(bottom.id);
+            }
           }
         }
       }
@@ -261,7 +408,8 @@ export default function Outfits() {
 
       if (
         buckets.outerwear.length &&
-        !pieces.some((p) => inferSlot(p) === "outerwear")
+        !pieces.some((p) => inferSlot(p) === "outerwear") &&
+        Math.random() < 0.7
       ) {
         const outer = randomFrom(buckets.outerwear);
         if (outer && !pickedIds.has(outer.id)) {
@@ -270,14 +418,22 @@ export default function Outfits() {
         }
       }
 
-      const accessoriesToAdd = Math.min(
-        1,
-        buckets.accessory.length
+      const maxAccessories = Math.min(
+        2,
+        buckets.accessory.length,
+        pieces.length >= 3 ? 2 : 1
       );
+      const accessoriesToAdd = Math.min(
+        maxAccessories,
+        Math.random() < 0.5 ? 1 : maxAccessories
+      );
+
       for (let i = 0; i < accessoriesToAdd; i += 1) {
-        const accessory = randomFrom(
-          buckets.accessory.filter((acc) => !pickedIds.has(acc.id))
+        const availableAccessories = buckets.accessory.filter(
+          (acc) => !pickedIds.has(acc.id)
         );
+        if (!availableAccessories.length) break;
+        const accessory = randomFrom(availableAccessories);
         if (accessory) {
           pieces.push(accessory);
           pickedIds.add(accessory.id);
@@ -293,6 +449,7 @@ export default function Outfits() {
           ...buckets.accessory,
           ...buckets.other,
         ].filter((item) => !pickedIds.has(item.id));
+
         while (pieces.length < 2 && fallbackPool.length) {
           const pick = randomFrom(fallbackPool);
           if (pick && !pickedIds.has(pick.id)) {
@@ -319,9 +476,13 @@ export default function Outfits() {
       });
     }
 
-    setOutfits(combos);
+    setOutfits(
+      combos.sort(
+        (a, b) => scoreOutfitForWeather(b, weatherTag) - scoreOutfitForWeather(a, weatherTag)
+      )
+    );
     setActiveDetailsId(null);
-  }, [buckets, wardrobe.length]);
+  }, [buckets, wardrobe.length, weatherTag]);
 
   useEffect(() => {
     generateOutfits();
@@ -354,6 +515,11 @@ export default function Outfits() {
               <p className="text-neutral-400">
                 We build looks using the items you&apos;ve scanned into StyleAI.
               </p>
+              {profile.location && weatherTag !== "neutral" && (
+                <p className="text-sm text-pink-200">
+                  Weather signal: {weatherTag} where you are – suggesting outfits to match.
+                </p>
+              )}
             </div>
             {!showEmpty && (
               <button
@@ -368,7 +534,8 @@ export default function Outfits() {
           {showEmpty ? (
             <div className="rounded-3xl border border-pink-500/20 bg-neutral-900/70 p-10 shadow-2xl text-center space-y-3">
               <p className="text-lg font-semibold text-neutral-200">
-                No wardrobe items yet. Scan or add pieces to start generating outfits.
+                No wardrobe items yet. Scan or add pieces to start generating
+                outfits.
               </p>
               <p className="text-neutral-400">
                 You can still explore vibes in Style Swiper.
@@ -378,7 +545,8 @@ export default function Outfits() {
             <>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="text-sm text-neutral-400">
-                  Using {ownedCount} piece{ownedCount !== 1 ? "s" : ""} from your wardrobe
+                  Using {ownedCount} piece
+                  {ownedCount !== 1 ? "s" : ""} from your wardrobe
                 </div>
               </div>
 
@@ -391,7 +559,9 @@ export default function Outfits() {
                       key={outfit.id}
                       className="group rounded-3xl bg-neutral-950 border border-pink-500/20 shadow-2xl overflow-hidden flex flex-col"
                       onClick={() =>
-                        setActiveDetailsId((prev) => (prev === outfit.id ? null : outfit.id))
+                        setActiveDetailsId((prev) =>
+                          prev === outfit.id ? null : outfit.id
+                        )
                       }
                     >
                       <div className="relative">
@@ -399,7 +569,7 @@ export default function Outfits() {
                           {outfit.pieces.map((piece) => (
                             <div
                               key={piece.id}
-                              className="aspect-[4/5] rounded-2xl overflow-hidden bg-neutral-900 border border-pink-500/20 shadow-lg shadow-pink-500/10"
+                              className="aspect-4/5 rounded-2xl overflow-hidden bg-neutral-900 border border-pink-500/20 shadow-lg shadow-pink-500/10"
                             >
                               {piece.image ? (
                                 <img
@@ -417,7 +587,7 @@ export default function Outfits() {
                         </div>
 
                         <div
-                          className={`pointer-events-none absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-neutral-950/90 via-neutral-950/50 to-transparent px-5 pb-4 transition-all duration-300 ${
+                          className={`pointer-events-none absolute inset-0 flex flex-col justify-end bg-linear-to-t from-neutral-950/90 via-neutral-950/50 to-transparent px-5 pb-4 transition-all duration-300 ${
                             detailsOpen
                               ? "opacity-100 translate-y-0"
                               : "opacity-0 translate-y-6 group-hover:translate-y-0 group-hover:opacity-100"
@@ -429,7 +599,10 @@ export default function Outfits() {
                             </div>
                             <ul className="text-sm text-neutral-200 space-y-1 max-h-32 overflow-auto">
                               {outfit.pieces.map((piece) => (
-                                <li key={`${outfit.id}-${piece.id}`} className="flex justify-between gap-2">
+                                <li
+                                  key={`${outfit.id}-${piece.id}`}
+                                  className="flex justify-between gap-2"
+                                >
                                   <span className="text-neutral-300">
                                     {piece.brand || "Brand"}
                                   </span>
@@ -446,9 +619,13 @@ export default function Outfits() {
                       <div className="p-5 space-y-3 flex-1 flex flex-col">
                         <div className="flex items-start justify-between gap-3">
                           <div className="space-y-1">
-                            <h3 className="text-xl font-semibold">{outfit.name}</h3>
+                            <h3 className="text-xl font-semibold">
+                              {outfit.name}
+                            </h3>
                             <p className="text-sm text-neutral-400">
-                              {totalPieces} piece{totalPieces !== 1 ? "s" : ""} from your wardrobe
+                              {totalPieces} piece
+                              {totalPieces !== 1 ? "s" : ""} from your
+                              wardrobe
                             </p>
                           </div>
                           <button
@@ -483,7 +660,8 @@ export default function Outfits() {
               {outfits.length === 0 && (
                 <div className="rounded-3xl border border-pink-500/20 bg-neutral-900/70 p-8 shadow-2xl text-center">
                   <p className="text-neutral-300 font-semibold">
-                    Not enough variety to build outfits yet. Add more wardrobe items.
+                    Not enough variety to build outfits yet. Add more wardrobe
+                    items.
                   </p>
                 </div>
               )}

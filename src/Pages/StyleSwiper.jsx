@@ -1,7 +1,8 @@
 // src/Pages/StyleSwiper.jsx
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import Layout from "../Layout";
 import { Heart, X, Sparkles, RefreshCw } from "lucide-react";
+import { shouldShowForProfile } from "../utils";
 
 const CLOTHES = [
   {
@@ -10,6 +11,7 @@ const CLOTHES = [
     brand: "Maison Margiela",
     image:
       "https://www.maisonmargiela.com/dw/image/v2/AAPK_PRD/on/demandware.static/-/Sites-margiela-master-catalog/default/dw00402936/images/large/S57WS0236_P1895_T6065_F.jpg?sw=1024&q=80",
+    audience: "unisex",
   },
   {
     id: 2,
@@ -17,6 +19,7 @@ const CLOTHES = [
     brand: "GAP",
     image:
       "https://www.gapcanada.ca/webcontent/0056/550/357/cn56550357.jpg",
+    audience: "unisex",
   },
   {
     id: 3,
@@ -24,6 +27,7 @@ const CLOTHES = [
     brand: "Ralph Lauren",
     image:
       "https://dtcralphlauren.scene7.com/is/image/PoloGSI/s7-305179_alternate10?$rl_4x5_pdp$",
+    audience: "male",
   },
   {
     id: 4,
@@ -31,6 +35,7 @@ const CLOTHES = [
     brand: "SaintLaurent",
     image:
       "https://saint-laurent.dam.kering.com/m/70a73b88f516dd0b/Medium2-778485YCNF21000_A.jpg?v=5",
+    audience: "unisex",
   },
   {
     id: 5,
@@ -38,6 +43,7 @@ const CLOTHES = [
     brand: "COS",
     image:
       "https://media.cos.com/assets/001/bd/50/bd501a8ec8ba88a0a4e359d93c76de2abe893045_xxl-1.jpg?imwidth=1260",
+    audience: "unisex",
   },
   {
     id: 6,
@@ -45,6 +51,7 @@ const CLOTHES = [
     brand: "H&M",
     image:
       "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcQfkIC4RQHBJnWZpITnTC7UVSQkD-5t8YAKFNw6Cq3YVmcSI865TU47AGhn-E1DWWJzF7LKnAT-xfvqCrv71eLVoJX8zu1qZfpBUpTsIK3JVTcGzKp0dwouRA",
+    audience: "unisex",
   },
   {
     id: 7,
@@ -52,6 +59,7 @@ const CLOTHES = [
     brand: "Arc'teryx",
     image:
       "https://images-dynamic-arcteryx.imgix.net/details/1350x1710/F25-X000009914-Therme-Down-Parka-Carob-Back-View.jpg?auto=format%2Ccompress&q=70&fit=crop&fill=white&dpr=2&ixlib=react-9.10.0&w=927",
+    audience: "male",
   },
   {
     id: 8,
@@ -59,6 +67,7 @@ const CLOTHES = [
     brand: "Reformation",
     image:
       "https://media.thereformation.com/image/upload/f_auto,q_auto:eco,dpr_2.0/w_500/PRD-SFCC/1318428/SUGAR/1318428.1.SUGAR",
+    audience: "female",
   },
   {
     id: 9,
@@ -66,11 +75,17 @@ const CLOTHES = [
     brand: "Burberry",
     image:
       "https://assets.burberry.com/is/image/Burberryltd/EC5C7407-7705-4CD9-B59E-1AAB2C33E8E3?wid=200",
+    audience: "unisex",
   },
 ];
 
 const SWIPE_THRESHOLD = 80;
 const STORAGE_KEY = "styleAI-liked-clothes";
+const SESSION_KEY = "styleAI-swiper-session";
+const PROFILE_KEY = "styleAI-profile";
+const LEGACY_PROFILE_KEY = "styleai_profile";
+
+const getToday = () => new Date().toISOString().slice(0, 10);
 
 export default function StyleSwiper() {
   const [index, setIndex] = useState(0);
@@ -79,18 +94,39 @@ export default function StyleSwiper() {
   const [dragX, setDragX] = useState(0);
   const [leavingDirection, setLeavingDirection] = useState(null);
   const [history, setHistory] = useState([]); // {id, liked}
+  const [hasLoadedSession, setHasLoadedSession] = useState(false);
+  const [profile, setProfile] = useState({ genderPreference: "unspecified" });
 
-  const currentItem = CLOTHES[index];
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw =
+        window.localStorage.getItem(PROFILE_KEY) ||
+        window.localStorage.getItem(LEGACY_PROFILE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      setProfile((prev) => ({ ...prev, ...(parsed || {}) }));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const deck = useMemo(
+    () => CLOTHES.filter((item) => shouldShowForProfile(item, profile)),
+    [profile]
+  );
+  const deckLength = deck.length;
+  const currentItem = deck[index] || null;
   const isDragging = dragStartX !== null;
-  const showFinished = index >= CLOTHES.length;
+  const showFinished = index >= deckLength || deckLength === 0;
 
   const resetDeck = useCallback(() => {
     setIndex(0);
-    setLikedIds([]);
     setDragX(0);
     setDragStartX(null);
     setLeavingDirection(null);
     setHistory([]);
+    // keep likedIds as your lifetime likes
   }, []);
 
   const goToNextCard = useCallback(
@@ -120,22 +156,24 @@ export default function StyleSwiper() {
 
   const handleDragStart = useCallback(
     (clientX) => {
-      if (!currentItem || leavingDirection) return;
+      if (!currentItem || leavingDirection || showFinished) return;
       setDragStartX(clientX);
     },
-    [currentItem, leavingDirection]
+    [currentItem, leavingDirection, showFinished]
   );
 
   const handleDragMove = useCallback(
     (clientX) => {
-      if (dragStartX === null || !currentItem || leavingDirection) return;
+      if (dragStartX === null || !currentItem || leavingDirection || showFinished)
+        return;
       setDragX(clientX - dragStartX);
     },
-    [dragStartX, currentItem, leavingDirection]
+    [dragStartX, currentItem, leavingDirection, showFinished]
   );
 
   const handleRelease = useCallback(() => {
-    if (dragStartX === null || !currentItem || leavingDirection) return;
+    if (dragStartX === null || !currentItem || leavingDirection || showFinished)
+      return;
 
     if (dragX > SWIPE_THRESHOLD) {
       goToNextCard("right");
@@ -149,10 +187,10 @@ export default function StyleSwiper() {
 
     setDragStartX(null);
     setDragX(0);
-  }, [dragStartX, dragX, currentItem, leavingDirection, goToNextCard]);
+  }, [dragStartX, dragX, currentItem, leavingDirection, showFinished, goToNextCard]);
 
   const handleUndo = () => {
-    if (history.length === 0 || leavingDirection || index === 0) return;
+    if (history.length === 0 || leavingDirection || index === 0 || showFinished) return;
 
     const last = history[history.length - 1];
 
@@ -195,9 +233,10 @@ export default function StyleSwiper() {
       ? Math.min(Math.abs(dragX) / SWIPE_THRESHOLD, 1)
       : 0;
 
-  const canUndo = history.length > 0 && !leavingDirection && index > 0;
+  const canUndo =
+    history.length > 0 && !leavingDirection && index > 0 && !showFinished;
 
-  // Load likes from storage on mount
+  // 1) Load lifetime likes on mount
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -209,12 +248,71 @@ export default function StyleSwiper() {
         .map((item) => item?.id)
         .filter((id) => typeof id === "number");
       setLikedIds(ids);
-    } catch (err) {
+    } catch {
       setLikedIds([]);
     }
   }, []);
 
-  // Persist likes to storage whenever they change
+  // 2) Load today's session progress (this is what should keep your place)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(SESSION_KEY);
+      if (!raw) {
+        setHasLoadedSession(true);
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      const today = getToday();
+
+      // THIS is where "next day" logic is:
+      // if the stored date != today, we start a fresh deck.
+      if (parsed.date !== today) {
+        setHasLoadedSession(true);
+        return;
+      }
+
+      if (typeof parsed.index === "number") {
+        setIndex(parsed.index);
+      }
+      if (Array.isArray(parsed.history)) {
+        setHistory(parsed.history);
+      }
+      setHasLoadedSession(true);
+    } catch {
+      setHasLoadedSession(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (deckLength === 0) return;
+    if (index >= deckLength) {
+      setIndex(deckLength);
+      setDragX(0);
+      setDragStartX(null);
+      setLeavingDirection(null);
+    }
+  }, [deckLength, index]);
+
+  // 3) Save today's session, but ONLY after we've loaded it once
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!hasLoadedSession) return; // <- crucial: don't overwrite stored session on first mount
+
+    try {
+      const today = getToday();
+      const session = {
+        date: today,
+        index,
+        history,
+      };
+      window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    } catch {
+      // ignore
+    }
+  }, [index, history, hasLoadedSession]);
+
+  // 4) Persist lifetime likes whenever they change
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -226,12 +324,9 @@ export default function StyleSwiper() {
         brand,
         image,
       }));
-      window.localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(likedItems)
-      );
-    } catch (err) {
-      // ignore storage errors
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(likedItems));
+    } catch {
+      // ignore
     }
   }, [likedIds]);
 
@@ -248,15 +343,22 @@ export default function StyleSwiper() {
               </span>
             </div>
             <h1 className="text-2xl font-bold text-white sm:text-3xl">
-              Swipe pieces you love
+              Daily swipe: pieces you love
             </h1>
             <p className="text-sm text-neutral-400 sm:text-base">
-              Drag left to pass, right to keep. Buttons below if you prefer.
+              One deck of pieces per day. Swipe right to keep, left to pass.
             </p>
           </div>
-          <div className="flex items-center gap-2 rounded-full border border-pink-500/30 bg-pink-500/10 px-3 py-1 text-xs font-semibold text-pink-100 sm:text-sm">
-            <Heart className="h-4 w-4" />
-            <span>{likedIds.length} saved</span>
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex items-center gap-2 rounded-full border border-pink-500/30 bg-pink-500/10 px-3 py-1 text-xs font-semibold text-pink-100 sm:text-sm">
+              <Heart className="h-4 w-4" />
+              <span>{likedIds.length} saved overall</span>
+            </div>
+            {showFinished && (
+              <span className="text-[11px] text-neutral-400 sm:text-xs">
+                You’ve completed today’s deck.
+              </span>
+            )}
           </div>
         </div>
 
@@ -269,23 +371,21 @@ export default function StyleSwiper() {
               </div>
               <div>
                 <h2 className="text-xl font-semibold text-white sm:text-2xl">
-                  You&apos;ve swiped through all pieces
+                  Daily deck complete ✨
                 </h2>
                 <p className="mt-2 text-sm text-neutral-400 sm:text-base">
-                  {likedIds.length === 0
-                    ? "No keepers this round — want another go?"
-                    : `You kept ${likedIds.length} piece${
-                        likedIds.length === 1 ? "" : "s"
-                      }. Restart to swipe again.`}
+                  {history.filter((h) => h.liked).length === 0
+                    ? "No keepers today — your taste is ruthless."
+                    : `You kept ${
+                        history.filter((h) => h.liked).length
+                      } piece${
+                        history.filter((h) => h.liked).length === 1 ? "" : "s"
+                      } today. Come back tomorrow for a fresh set.`}
                 </p>
               </div>
-              <button
-                onClick={resetDeck}
-                className="inline-flex items-center gap-2 rounded-full bg-pink-500 px-4 py-2 text-sm font-semibold text-neutral-950 shadow-lg shadow-pink-500/30 transition hover:shadow-pink-500/40"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Restart swiping
-              </button>
+              <p className="text-xs text-neutral-500 sm:text-sm">
+                New swipes unlock automatically each day.
+              </p>
             </div>
           ) : (
             currentItem && (
@@ -318,7 +418,8 @@ export default function StyleSwiper() {
                       <div className="flex items-center gap-2 rounded-full bg-neutral-950/80 px-3 py-1 text-xs font-semibold text-pink-100">
                         <Sparkles className="h-4 w-4" />
                         <span>
-                          {index + 1} / {CLOTHES.length}
+                          {Math.min(index + 1, Math.max(deckLength, 1))} /{" "}
+                          {Math.max(deckLength, 1)}
                         </span>
                       </div>
                     </div>
@@ -345,7 +446,8 @@ export default function StyleSwiper() {
                             {currentItem.brand}
                           </p>
                           <p className="mt-2 text-[11px] text-neutral-500 sm:text-xs">
-                            Swipe right to keep, left to pass.
+                            Swipe right to keep, left to pass. One shot per
+                            piece today.
                           </p>
                         </div>
                       </div>
