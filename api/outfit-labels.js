@@ -1,8 +1,4 @@
-// /api/outfit-labels.js
-
-const MODEL_ID = "mistralai/Mistral-7B-Instruct-v0.2";
-// If this model is gated / paid on your account, try e.g.
-// const MODEL_ID = "tiiuae/falcon-7b-instruct";
+// api/outfit-labels.js  (Vercel serverless function)
 
 export default async function handler(req, res) {
   try {
@@ -11,21 +7,25 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: "Method not allowed" });
     }
 
-    if (!process.env.HUGGINGFACE_API_KEY) {
+    const apiKey = process.env.HUGGINGFACE_API_KEY;
+    if (!apiKey) {
       console.error("Missing HUGGINGFACE_API_KEY");
-      return res
-        .status(500)
-        .json({ error: "Missing Hugging Face API key" });
+      return res.status(500).json({ error: "Missing Hugging Face API key" });
     }
 
-    const body =
-      typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
-    const { pieces } = body;
+    // Safely parse body (Vercel sometimes gives string, sometimes object)
+    const parsedBody =
+      typeof req.body === "string" && req.body
+        ? JSON.parse(req.body)
+        : req.body || {};
+
+    const { pieces } = parsedBody;
 
     if (!Array.isArray(pieces)) {
-      return res.status(400).json({ error: "Invalid payload" });
+      return res.status(400).json({ error: "Invalid payload: pieces must be an array" });
     }
 
+    // Turn the pieces into a compact text description
     const piecesText = pieces
       .map((piece, idx) => {
         const slot = piece.slot || `piece${idx + 1}`;
@@ -36,69 +36,59 @@ export default async function handler(req, res) {
       })
       .join("; ");
 
-    const prompt = [
-      "You are a fashion stylist.",
-      "Based on this list of clothing pieces, give a short, catchy outfit name and one-sentence description.",
-      'Return valid JSON with fields "name" and "description".',
-      `Pieces: ${piecesText}`,
-    ].join(" ");
+    // We'll use the OpenAI-compatible chat endpoint on router.huggingface.co
+    const systemPrompt =
+      "You are a fashion stylist. " +
+      "Given some clothing pieces, you must return ONLY valid JSON " +
+      'with two fields: "name" and "description". ' +
+      'Do not include any extra text before or after the JSON.';
 
-    const hfResponse = await fetch(
-      `https://api-inference.huggingface.co/models/${MODEL_ID}`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          inputs: prompt,
-          parameters: {
-            max_new_tokens: 80,
-            temperature: 0.7,
-          },
-        }),
-      }
-    );
+    const userPrompt = `Pieces: ${piecesText}`;
 
-    const raw = await hfResponse.text();
+    const hfResponse = await fetch("https://router.huggingface.co/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "mistralai/Mistral-7B-Instruct-v0.2",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.7,
+        max_tokens: 120,
+      }),
+    });
+
+    const hfJson = await hfResponse.json();
 
     if (!hfResponse.ok) {
-      // This will now come back to your frontend so we can see the real cause
-      console.error("HF error", hfResponse.status, raw);
+      console.error("HF error:", hfResponse.status, hfJson);
       return res.status(500).json({
         error: "HF API failed",
         status: hfResponse.status,
-        details: raw,
+        details: JSON.stringify(hfJson),
       });
     }
 
-    let hfData;
-    try {
-      hfData = JSON.parse(raw);
-    } catch {
-      hfData = raw;
-    }
-
-    const generatedText =
-      (Array.isArray(hfData)
-        ? hfData[0]?.generated_text
-        : hfData?.generated_text) || "";
-
-    const trimmed = String(generatedText || "").trim();
+    const content =
+      hfJson?.choices?.[0]?.message?.content?.trim() || "";
 
     let name = "AI styled outfit";
-    let description = trimmed;
+    let description = content;
 
-    // Try to parse JSON if the model followed instructions
+    // Try to parse the model output as JSON { name, description }
     try {
-      const parsedGenerated = JSON.parse(trimmed);
-      if (parsedGenerated && typeof parsedGenerated === "object") {
-        if (parsedGenerated.name) name = parsedGenerated.name;
-        if (parsedGenerated.description) description = parsedGenerated.description;
+      const parsed = JSON.parse(content);
+      if (parsed && typeof parsed === "object") {
+        if (typeof parsed.name === "string") name = parsed.name;
+        if (typeof parsed.description === "string") description = parsed.description;
       }
-    } catch {
-      // If it's not JSON, we just keep the raw text as description
+    } catch (err) {
+      // If it’s not valid JSON, keep the raw text as description
+      console.warn("Could not parse model output as JSON, using raw text.");
     }
 
     return res.status(200).json({ name, description });
