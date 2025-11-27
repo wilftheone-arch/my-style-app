@@ -332,7 +332,38 @@ export default function Outfits() {
     return grouped;
   }, [wardrobe]);
 
-  const generateOutfits = useCallback(() => {
+  const enrichOutfitsWithAI = useCallback(async (baseOutfits) => {
+    try {
+      const response = await fetch("/api/outfit-labels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ outfits: baseOutfits }),
+      });
+
+      if (!response.ok) {
+        return baseOutfits;
+      }
+
+      const data = await response.json();
+      const labels = Array.isArray(data?.labels) ? data.labels : [];
+      const labelsById = labels.reduce((acc, label) => {
+        if (label?.id) {
+          acc[label.id] = label;
+        }
+        return acc;
+      }, {});
+
+      return baseOutfits.map((outfit) => {
+        const label = labelsById[outfit.id];
+        if (!label) return outfit;
+        return { ...outfit, aiName: label.name, aiVibe: label.vibe };
+      });
+    } catch (err) {
+      return baseOutfits;
+    }
+  }, []);
+
+  const generateOutfits = useCallback(async () => {
     const combos = [];
     const used = new Set();
     const availableCount = wardrobe.length;
@@ -476,13 +507,13 @@ export default function Outfits() {
       });
     }
 
-    setOutfits(
-      combos.sort(
-        (a, b) => scoreOutfitForWeather(b, weatherTag) - scoreOutfitForWeather(a, weatherTag)
-      )
+    const sorted = combos.sort(
+      (a, b) => scoreOutfitForWeather(b, weatherTag) - scoreOutfitForWeather(a, weatherTag)
     );
+    const enriched = await enrichOutfitsWithAI(sorted);
+    setOutfits(enriched);
     setActiveDetailsId(null);
-  }, [buckets, wardrobe.length, weatherTag]);
+  }, [buckets, wardrobe.length, weatherTag, enrichOutfitsWithAI]);
 
   useEffect(() => {
     generateOutfits();
@@ -620,8 +651,11 @@ export default function Outfits() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="space-y-1">
                             <h3 className="text-xl font-semibold">
-                              {outfit.name}
+                              {outfit.aiName || outfit.name}
                             </h3>
+                            <p className="text-sm text-neutral-300">
+                              {outfit.aiVibe || "AI vibe description will appear here once generated."}
+                            </p>
                             <p className="text-sm text-neutral-400">
                               {totalPieces} piece
                               {totalPieces !== 1 ? "s" : ""} from your
