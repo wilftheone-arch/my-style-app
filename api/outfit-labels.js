@@ -1,91 +1,116 @@
-import OpenAI from "openai";
+// pages/api/outfit-labels.js
+
+const HF_API_URL = "https://router.huggingface.co/v1/chat/completions";
+const HF_MODEL = "meta-llama/Meta-Llama-3.1-8B-Instruct"; // adjust to a model that works in your HF Playground
+const HF_PROVIDER = "hf-inference"; // use HF's own inference provider
 
 export default async function handler(req, res) {
   try {
+    // 1. Method guard
     if (req.method !== "POST") {
       res.setHeader("Allow", "POST");
       return res.status(405).json({ error: "Method not allowed" });
     }
 
-    if (!process.env.HUGGINGFACE_API_KEY) {
+    // 2. Check token
+    const apiKey = process.env.HF_TOKEN || process.env.HUGGINGFACE_API_KEY;
+    if (!apiKey) {
       return res.status(500).json({ error: "Missing Hugging Face API key" });
     }
 
-    const body =
-      typeof req.body === "string" ? JSON.parse(req.body) : req.body || {};
+    // 3. Parse body
+    const parsedBody =
+      typeof req.body === "string" && req.body
+        ? JSON.parse(req.body)
+        : req.body || {};
 
-    const { pieces } = body;
+    const { pieces } = parsedBody;
 
-    if (!Array.isArray(pieces)) {
-      return res.status(400).json({ error: "Invalid payload" });
+    if (!Array.isArray(pieces) || pieces.length === 0) {
+      return res.status(400).json({ error: "Invalid payload: pieces must be a non-empty array" });
     }
 
+    // 4. Turn pieces into readable text
     const piecesText = pieces
-      .map((p) => {
-        return `${p.slot || "piece"}: ${p.brand || "brand"} ${p.title || "item"} (${p.colour ||
-          p.color ||
-          "colour"})`;
+      .map((piece, idx) => {
+        const slot = piece.slot || `piece${idx + 1}`;
+        const title = piece.title || piece.name || "Unknown item";
+        const brand = piece.brand || "Unknown brand";
+        const colour = piece.colour || piece.color || "unspecified colour";
+        return `- ${slot}: ${brand} ${title} (${colour})`;
       })
-      .join("; ");
+      .join("\n");
 
-    const prompt = `
-You are a professional fashion stylist.
+    // 5. Prompt for the model (ask for JSON)
+    const userPrompt = [
+      "You are a fashion stylist.",
+      "Given these clothing pieces, create a short, catchy outfit name and one-sentence description.",
+      "Return ONLY valid JSON with exactly two fields: name (string) and description (string).",
+      "No extra text, no markdown.",
+      "",
+      "Pieces:",
+      piecesText,
+      "",
+      "JSON:"
+    ].join("\n");
 
-Based on the list of clothing pieces below, create:
-- a short, catchy outfit NAME
-- a one-sentence DESCRIPTION
-
-Return ONLY JSON in this shape:
-{
-  "name": "...",
-  "description": "..."
-}
-
-Pieces: ${piecesText}
-`;
-
-    // --- HF ROUTER CLIENT ---
-    const client = new OpenAI({
-      baseURL: "https://router.huggingface.co/v1",
-      apiKey: process.env.HUGGINGFACE_API_KEY,
+    // 6. Call Hugging Face router (OpenAI-compatible)
+    const hfResponse = await fetch(HF_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: HF_MODEL,
+        provider: HF_PROVIDER,
+        temperature: 0.7,
+        max_tokens: 120,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a helpful fashion stylist AI. You MUST always respond with a single valid JSON object containing keys `name` and `description`.",
+          },
+          { role: "user", content: userPrompt },
+        ],
+      }),
     });
 
-    const completion = await client.chat.completions.create({
-      model: "moonshotai/Kimi-K2-Thinking:novita",
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 200,
-      temperature: 0.7,
-    });
+    if (!hfResponse.ok) {
+      const details = await hfResponse.text();
+      console.error("HF router error:", hfResponse.status, details);
+      return res.status(500).json({
+        error: "HF API failed",
+        status: hfResponse.status,
+        details,
+      });
+    }
 
-    const responseText = completion.choices?.[0]?.message?.content || "";
+    const data = await hfResponse.json();
+    const rawContent = data?.choices?.[0]?.message?.content || "";
 
+    // 7. Try to parse JSON from the model output
     let name = "AI styled outfit";
-    let description = responseText;
+    let description = "Could not parse model response.";
 
     try {
-      const parsed = JSON.parse(responseText);
-      name = parsed.name || name;
-      description = parsed.description || description;
-    } catch (err) {
-      // not JSON → leave defaults
+      const parsed = JSON.parse(rawContent.trim());
+      if (parsed && typeof parsed === "object") {
+        if (typeof parsed.name === "string") name = parsed.name;
+        if (typeof parsed.description === "string") description = parsed.description;
+      } else {
+        description = rawContent.trim();
+      }
+    } catch {
+      // If it's not valid JSON, just return the raw text
+      description = rawContent.trim() || description;
     }
 
     return res.status(200).json({ name, description });
   } catch (err) {
-    console.error("HF API failed", err);
-
-    if (err.response) {
-      const { status, data } = err.response;
-      return res.status(status || 500).json({
-        error: "HF API failed",
-        status,
-        details: JSON.stringify(data),
-      });
-    }
-
-    return res.status(500).json({
-      error: "HF API failed",
-      details: err.message,
-    });
+    console.error("Failed to generate outfit label:", err);
+    return res.status(500).json({ error: "Failed to generate outfit label" });
   }
 }
